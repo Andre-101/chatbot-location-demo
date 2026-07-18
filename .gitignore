@@ -1,0 +1,26 @@
+# Variables locales
+.env
+.env.*
+!.env.example
+
+# Secretos y credenciales
+secrets.*
+credentials.*
+*.key
+*.pem
+
+# Bases y datos privados
+*.xlsx
+*.xls
+*.csv
+data/private/
+data/internal/
+
+# Backend separado
+Code.gs
+
+# Sistema y editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
