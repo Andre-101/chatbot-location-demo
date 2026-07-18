@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Asistente de ubicaciones para encontrar un canal cercano según la operación requerida.">
+  <meta name="theme-color" content="#071b33">
+  <title>Asistente de ubicaciones</title>
+
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ3ynhLwR2zL7kI1qYFWn3nW0Fh9BMY=" crossorigin="">
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">Demo de recomendación geográfica</p>
+      <h1>¿Dónde puedo hacer mi operación?</h1>
+    </div>
+    <span id="api-status" class="status-pill" aria-live="polite">Comprobando servicio…</span>
+  </header>
+
+  <main class="app-shell">
+    <section class="panel conversation-panel" aria-labelledby="assistant-title">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Asistente</p>
+          <h2 id="assistant-title">Describe lo que necesitas</h2>
+        </div>
+        <button id="location-button" class="secondary-button" type="button">Usar mi ubicación</button>
+      </div>
+
+      <div id="messages" class="messages" aria-live="polite">
+        <article class="message assistant-message">
+          <p>Escribe una solicitud como “necesito retirar 200.000 pesos” y autoriza tu ubicación para buscar opciones cercanas.</p>
+        </article>
+      </div>
+
+      <form id="chat-form" class="chat-form">
+        <label class="sr-only" for="chat-input">Solicitud</label>
+        <input id="chat-input" name="query" type="text" maxlength="500" autocomplete="off" placeholder="Ejemplo: necesito retirar 200.000 pesos" required>
+        <button class="primary-button" type="submit">Buscar</button>
+      </form>
+
+      <p class="privacy-note">No escribas números de cuenta, documentos, contraseñas ni datos personales.</p>
+    </section>
+
+    <section class="panel result-panel" aria-labelledby="result-title">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Resultado</p>
+          <h2 id="result-title">Recomendación</h2>
+        </div>
+      </div>
+
+      <div id="recommendation-empty" class="empty-state">
+        <p>La recomendación aparecerá cuando tengamos una solicitud y tu ubicación.</p>
+      </div>
+
+      <article id="recommendation-card" class="recommendation-card hidden">
+        <div class="recommendation-header">
+          <span id="recommendation-type" class="channel-badge"></span>
+          <span id="recommendation-quality" class="quality-badge"></span>
+        </div>
+        <h3 id="recommendation-name"></h3>
+        <p id="recommendation-address" class="address"></p>
+        <dl class="metrics">
+          <div><dt>Distancia vial</dt><dd id="route-distance">—</dd></div>
+          <div><dt>Tiempo estimado</dt><dd id="route-duration">—</dd></div>
+        </dl>
+        <p id="recommendation-reason" class="reason"></p>
+        <a id="open-route-link" class="primary-link" href="#" target="_blank" rel="noopener noreferrer">Abrir indicaciones</a>
+      </article>
+
+      <div id="map" class="map" role="region" aria-label="Mapa de la recomendación"></div>
+    </section>
+  </main>
+
+  <section class="alternatives-section" aria-labelledby="alternatives-title">
+    <div class="section-heading">
+      <p class="eyebrow">Comparación</p>
+      <h2 id="alternatives-title">Alternativas cercanas</h2>
+    </div>
+    <div id="alternatives" class="alternatives-grid">
+      <p class="empty-alternatives">Todavía no hay alternativas para mostrar.</p>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <p>Prototipo académico. Los puntos deben validarse antes de utilizarse en producción.</p>
+    <p>Mapa © colaboradores de OpenStreetMap.</p>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
