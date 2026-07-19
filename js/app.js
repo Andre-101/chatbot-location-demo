@@ -61,7 +61,6 @@ function requestLocation() {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
       };
-
       elements.locationButton.textContent = "Ubicación lista";
       addMessage("Ubicación recibida. Ya puedo buscar opciones cercanas.", "assistant");
 
@@ -102,7 +101,6 @@ async function handleSubmit(event) {
 
 async function processQuery(query) {
   if (state.busy) return;
-
   setBusy(true);
 
   try {
@@ -115,20 +113,40 @@ async function processQuery(query) {
       return;
     }
 
-    const channelType = getChannelForAction(parsed.action);
+    const requestedChannel = getChannelForAction(parsed.action);
+
+    // Se consulta sin filtrar por tipo porque distintas versiones del Sheet
+    // pueden usar etiquetas diferentes para el mismo canal.
     const nearestResponse = await getNearestPoints({
       latitude: state.location.latitude,
       longitude: state.location.longitude,
-      type: channelType,
-      limit: 5,
+      type: "",
+      limit: 50,
     });
 
-    if (!nearestResponse.points.length) {
-      addMessage("No encontré puntos compatibles cercanos en la base demostrativa.", "assistant");
+    const allNearby = Array.isArray(nearestResponse.points)
+      ? nearestResponse.points
+      : [];
+
+    if (!allNearby.length) {
+      addMessage("La API respondió, pero no devolvió ubicaciones. Revisa que la hoja POINTS contenga registros habilitados.", "assistant");
       return;
     }
 
-    const ranked = await rankByRoadRoute(nearestResponse.points.slice(0, 3));
+    const compatible = allNearby
+      .filter(point => channelMatches(point.channel_type, requestedChannel))
+      .slice(0, 5);
+
+    if (!compatible.length) {
+      const availableTypes = [...new Set(allNearby.map(point => point.channel_type).filter(Boolean))];
+      addMessage(
+        `Recibí ${allNearby.length} ubicaciones, pero ninguna coincide con el canal esperado (${requestedChannel}). Tipos encontrados: ${availableTypes.join(", ") || "sin etiqueta"}.`,
+        "assistant",
+      );
+      return;
+    }
+
+    const ranked = await rankByRoadRoute(compatible.slice(0, 3));
     const recommendation = ranked[0];
 
     showRecommendation(parsed.action, recommendation);
@@ -140,6 +158,23 @@ async function processQuery(query) {
   } finally {
     setBusy(false);
   }
+}
+
+function channelMatches(value, expected) {
+  if (!expected) return true;
+
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replaceAll("-", "_")
+    .replaceAll(" ", "_");
+
+  const aliases = {
+    atm_site: new Set(["atm_site", "atm", "cajero", "cajero_automatico", "cash_machine"]),
+    office: new Set(["office", "oficina", "branch", "sucursal"]),
+  };
+
+  return aliases[expected]?.has(normalized) || normalized === expected;
 }
 
 async function rankByRoadRoute(points) {
@@ -174,7 +209,7 @@ async function rankByRoadRoute(points) {
 function showRecommendation(action, point) {
   elements.empty.classList.add("hidden");
   elements.card.classList.remove("hidden");
-  elements.type.textContent = point.channel_type === "atm_site" ? "Cajero" : "Oficina";
+  elements.type.textContent = channelMatches(point.channel_type, "atm_site") ? "Cajero" : "Oficina";
   elements.quality.textContent = point.geocoding_quality || "exact";
   elements.name.textContent = point.display_name;
   elements.address.textContent = `${point.address}, ${point.city}`;
@@ -196,7 +231,7 @@ function showAlternatives(points) {
     const article = document.createElement("article");
     article.className = "alternative-card";
     article.innerHTML = `
-      <span class="channel-badge">${point.channel_type === "atm_site" ? "Cajero" : "Oficina"}</span>
+      <span class="channel-badge">${channelMatches(point.channel_type, "atm_site") ? "Cajero" : "Oficina"}</span>
       <h3>${escapeHtml(point.display_name)}</h3>
       <p>${escapeHtml(point.address)}</p>
       <strong>${formatDistance(point.route.distanceM)}</strong>
