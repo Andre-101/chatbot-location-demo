@@ -2,9 +2,24 @@ import { APP_CONFIG } from "./config.js";
 
 let map;
 let userMarker;
+let accuracyCircle;
 let pointMarker;
 let routeLayer;
 let resizeObserver;
+
+const userIcon = L.divIcon({
+  className: "user-location-marker",
+  html: '<span aria-hidden="true"></span>',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+});
+
+const destinationIcon = L.divIcon({
+  className: "destination-marker",
+  html: '<span aria-hidden="true">●</span>',
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+});
 
 export function initializeMap() {
   const container = document.querySelector("#map");
@@ -12,11 +27,12 @@ export function initializeMap() {
   map = L.map(container, {
     zoomControl: true,
     preferCanvas: true,
+    attributionControl: true,
   }).setView([4.5709, -74.2973], 5);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
-    attribution: "&copy; OpenStreetMap contributors",
+    attribution: "&copy; OpenStreetMap",
   }).addTo(map);
 
   const refreshSize = () => {
@@ -32,17 +48,47 @@ export function initializeMap() {
   window.setTimeout(refreshSize, 500);
 }
 
+export function showCurrentPosition(location, { center = true } = {}) {
+  const latLng = [location.latitude, location.longitude];
+
+  if (!userMarker) {
+    userMarker = L.marker(latLng, {
+      icon: userIcon,
+      zIndexOffset: 1000,
+    }).addTo(map);
+  } else {
+    userMarker.setLatLng(latLng);
+  }
+
+  const accuracy = Number(location.accuracy || 0);
+  if (accuracy > 0) {
+    if (!accuracyCircle) {
+      accuracyCircle = L.circle(latLng, {
+        radius: accuracy,
+        color: "#0056d6",
+        weight: 1,
+        fillColor: "#0056d6",
+        fillOpacity: 0.08,
+        interactive: false,
+      }).addTo(map);
+    } else {
+      accuracyCircle.setLatLng(latLng).setRadius(accuracy);
+    }
+  }
+
+  map.invalidateSize({ pan: false });
+  if (center) map.setView(latLng, 15, { animate: true });
+}
+
 export async function drawRoute(origin, destination) {
-  clearMapLayers();
+  clearRouteLayers();
+  showCurrentPosition(origin, { center: false });
   map.invalidateSize({ pan: false });
 
-  userMarker = L.marker([origin.latitude, origin.longitude])
-    .addTo(map)
-    .bindPopup("Tu ubicación");
-
-  pointMarker = L.marker([destination.latitude, destination.longitude])
-    .addTo(map)
-    .bindPopup(destination.display_name);
+  pointMarker = L.marker([destination.latitude, destination.longitude], {
+    icon: destinationIcon,
+    zIndexOffset: 900,
+  }).addTo(map);
 
   const coordinates = `${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}`;
   const url = `${APP_CONFIG.OSRM_BASE_URL}/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=false`;
@@ -55,9 +101,21 @@ export async function drawRoute(origin, destination) {
     const route = data.routes?.[0];
     if (!route) throw new Error("OSRM no devolvió una ruta.");
 
-    routeLayer = L.geoJSON(route.geometry, { weight: 5 }).addTo(map);
+    routeLayer = L.geoJSON(route.geometry, {
+      style: {
+        color: "#0056d6",
+        weight: 6,
+        opacity: 0.9,
+        lineCap: "round",
+        lineJoin: "round",
+      },
+    }).addTo(map);
+
     map.invalidateSize({ pan: false });
-    map.fitBounds(routeLayer.getBounds(), { padding: [32, 32] });
+    map.fitBounds(routeLayer.getBounds(), {
+      padding: window.matchMedia("(max-width: 640px)").matches ? [24, 24] : [40, 40],
+      maxZoom: 16,
+    });
 
     return {
       distanceM: route.distance,
@@ -69,15 +127,18 @@ export async function drawRoute(origin, destination) {
       [destination.latitude, destination.longitude],
     ]);
     map.invalidateSize({ pan: false });
-    map.fitBounds(bounds, { padding: [32, 32] });
+    map.fitBounds(bounds, { padding: [32, 32], maxZoom: 16 });
     throw error;
   }
 }
 
-function clearMapLayers() {
-  for (const layer of [userMarker, pointMarker, routeLayer]) {
+function clearRouteLayers() {
+  for (const layer of [pointMarker, routeLayer]) {
     if (layer && map.hasLayer(layer)) map.removeLayer(layer);
   }
+
+  pointMarker = null;
+  routeLayer = null;
 }
 
 export function buildExternalRouteUrl(origin, destination) {
