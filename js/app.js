@@ -13,10 +13,34 @@ import {
 
 const isMobileGps = window.matchMedia("(pointer: coarse), (max-width: 640px)").matches;
 
+const ACTIONS = Object.freeze({
+  withdrawal: {
+    label: "Retirar",
+    phrase: "Necesito retirar",
+    aliases: ["retirar", "retiro", "sacar", "retir"],
+  },
+  deposit: {
+    label: "Depositar",
+    phrase: "Necesito depositar",
+    aliases: ["depositar", "deposito", "depósito", "consignar", "consignacion", "consignación"],
+  },
+  payment: {
+    label: "Pagar",
+    phrase: "Necesito pagar",
+    aliases: ["pagar", "pago"],
+  },
+  transfer: {
+    label: "Transferir",
+    phrase: "Necesito transferir",
+    aliases: ["transferir", "transferencia", "enviar dinero"],
+  },
+});
+
 const state = {
   location: null,
   busy: false,
   pendingQuery: "",
+  selectedAction: null,
   watchId: null,
 };
 
@@ -30,6 +54,7 @@ const elements = {
   sendButton: document.querySelector(".send-button"),
   quickActions: document.querySelectorAll(".quick-action"),
   empty: document.querySelector("#recommendation-empty"),
+  emptyText: document.querySelector("#recommendation-empty p"),
   card: document.querySelector("#recommendation-card"),
   resultCard: document.querySelector(".result-card"),
   resultState: document.querySelector("#result-state"),
@@ -54,12 +79,26 @@ function bindEvents() {
   elements.form.addEventListener("submit", handleSubmit);
 
   elements.quickActions.forEach(button => {
-    button.addEventListener("click", () => {
-      elements.input.value = button.dataset.query || "";
-      elements.input.focus();
-      elements.input.setSelectionRange(elements.input.value.length, elements.input.value.length);
-    });
+    button.setAttribute("aria-pressed", "false");
+    button.addEventListener("click", () => selectQuickAction(button));
   });
+}
+
+function selectQuickAction(button) {
+  const action = inferAction(button.dataset.query || button.textContent || "");
+  if (!action) return;
+
+  state.selectedAction = action;
+  updateQuickActionState();
+
+  elements.messages.replaceChildren();
+  addMessage(ACTIONS[action].label, "user");
+  addMessage("¿Qué monto?", "assistant");
+
+  elements.input.value = "";
+  elements.input.placeholder = "Ej. 200.000";
+  elements.input.inputMode = "decimal";
+  elements.input.focus();
 }
 
 async function verifyApi() {
@@ -112,6 +151,10 @@ async function handlePosition(position) {
   setLocationState("active");
   showCurrentPosition(state.location, { center: firstFix });
 
+  if (!elements.card || elements.card.classList.contains("hidden")) {
+    elements.emptyText.textContent = "Escribe la operación y el monto.";
+  }
+
   if (state.pendingQuery && !state.busy) {
     const query = state.pendingQuery;
     state.pendingQuery = "";
@@ -128,20 +171,41 @@ async function handleSubmit(event) {
   event.preventDefault();
   if (state.busy) return;
 
-  const query = elements.input.value.trim();
-  if (!query) return;
+  const visibleQuery = elements.input.value.trim();
+  if (!visibleQuery) return;
 
-  addMessage(query, "user");
+  const typedAction = inferAction(visibleQuery);
+  if (typedAction) {
+    state.selectedAction = typedAction;
+    updateQuickActionState();
+  }
+
+  addMessage(visibleQuery, "user");
   elements.input.value = "";
 
+  if (state.selectedAction && !hasAmount(visibleQuery)) {
+    addMessage("¿Qué monto?", "assistant");
+    elements.input.placeholder = "Ej. 200.000";
+    elements.input.inputMode = "decimal";
+    elements.input.focus();
+    return;
+  }
+
+  const effectiveQuery = composeQuery(visibleQuery);
+
   if (!state.location) {
-    state.pendingQuery = query;
+    state.pendingQuery = effectiveQuery;
     addMessage(isMobileGps ? "Activando GPS…" : "Obteniendo tu ubicación…", "assistant");
     requestLocation();
     return;
   }
 
-  await processQuery(query);
+  await processQuery(effectiveQuery);
+}
+
+function composeQuery(query) {
+  if (!state.selectedAction || inferAction(query)) return query;
+  return `${ACTIONS[state.selectedAction].phrase} ${query} pesos`;
 }
 
 async function processQuery(query) {
@@ -152,7 +216,17 @@ async function processQuery(query) {
 
   try {
     const intentResponse = await parseIntent(query);
-    const parsed = intentResponse.parsed;
+    const parsed = { ...intentResponse.parsed };
+    const contextualAction = state.selectedAction || inferAction(query);
+
+    if ((!parsed.action || parsed.action === "unknown") && contextualAction) {
+      parsed.action = contextualAction;
+    }
+
+    if (contextualAction && hasAmount(query)) {
+      parsed.needs_clarification = false;
+    }
+
     const validationMessage = validateParsedIntent(parsed);
 
     if (validationMessage) {
@@ -190,6 +264,7 @@ async function processQuery(query) {
     showAlternatives(ranked.slice(1));
     addMessage("Listo. Esta es la mejor opción.", "assistant");
     setResultState("Ruta lista", true);
+    resetActionSelection();
 
     if (window.matchMedia("(max-width: 980px)").matches) {
       elements.resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -201,6 +276,46 @@ async function processQuery(query) {
   } finally {
     setBusy(false);
   }
+}
+
+function inferAction(value) {
+  const normalized = normalizeText(value);
+
+  for (const [action, metadata] of Object.entries(ACTIONS)) {
+    if (metadata.aliases.some(alias => normalized.includes(normalizeText(alias)))) {
+      return action;
+    }
+  }
+
+  return null;
+}
+
+function hasAmount(value) {
+  const normalized = normalizeText(value);
+  return /\d/.test(normalized)
+    || /\b(cien|ciento|doscientos|trescientos|cuatrocientos|quinientos|seiscientos|setecientos|ochocientos|novecientos|mil|millon|millón|millones)\b/.test(normalized);
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function updateQuickActionState() {
+  elements.quickActions.forEach(button => {
+    const active = inferAction(button.dataset.query || button.textContent || "") === state.selectedAction;
+    button.setAttribute("aria-pressed", String(active));
+  });
+}
+
+function resetActionSelection() {
+  state.selectedAction = null;
+  updateQuickActionState();
+  elements.input.placeholder = "Ej. Retirar 200.000 pesos";
+  elements.input.inputMode = "text";
 }
 
 function channelMatches(value, expected) {
