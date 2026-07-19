@@ -1,0 +1,12 @@
+.quick-action[aria-pressed="true"] {
+  color: #ffffff;
+  background: #0056d6;
+  border-color: #0056d6;
+  box-shadow: 0 8px 18px rgba(0, 86, 214, 0.2);
+}
+
+.quick-action[aria-pressed="true"]:hover {
+  color: #ffffff;
+  background: #0045ad;
+  border-color: #0045ad;
+}
