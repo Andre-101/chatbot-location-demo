@@ -5,6 +5,7 @@ import { buildRecommendationReason, getChannelForAction, validateParsedIntent } 
 const state = {
   location: null,
   busy: false,
+  pendingQuery: "",
 };
 
 const elements = {
@@ -55,13 +56,21 @@ function requestLocation() {
   elements.locationButton.textContent = "Obteniendo ubicación…";
 
   navigator.geolocation.getCurrentPosition(
-    position => {
+    async position => {
       state.location = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
       };
+
       elements.locationButton.textContent = "Ubicación lista";
       addMessage("Ubicación recibida. Ya puedo buscar opciones cercanas.", "assistant");
+
+      if (state.pendingQuery) {
+        const query = state.pendingQuery;
+        state.pendingQuery = "";
+        addMessage("Retomando tu solicitud anterior…", "assistant");
+        await processQuery(query);
+      }
     },
     error => {
       elements.locationButton.disabled = false;
@@ -83,9 +92,16 @@ async function handleSubmit(event) {
   elements.input.value = "";
 
   if (!state.location) {
-    addMessage("Primero necesito tu ubicación. Pulsa “Usar mi ubicación” y vuelve a intentarlo.", "assistant");
+    state.pendingQuery = query;
+    addMessage("Primero necesito tu ubicación. Pulsa “Usar mi ubicación”; continuaré automáticamente cuando la reciba.", "assistant");
     return;
   }
+
+  await processQuery(query);
+}
+
+async function processQuery(query) {
+  if (state.busy) return;
 
   setBusy(true);
 
