@@ -2,10 +2,10 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Asistente de ubicaciones para encontrar un canal cercano según la operación requerida.">
-  <meta name="theme-color" content="#071b33">
-  <title>Asistente de ubicaciones</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Encuentra el punto más conveniente para realizar tu operación.">
+  <meta name="theme-color" content="#f4f7fb">
+  <title>Encuentra dónde hacerlo</title>
 
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tile.openstreetmap.org">
@@ -13,84 +13,126 @@
   <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body>
-  <header class="site-header">
-    <div>
-      <p class="eyebrow">Demo de recomendación geográfica</p>
-      <h1>¿Dónde puedo hacer mi operación?</h1>
-    </div>
-    <span id="api-status" class="status-pill" aria-live="polite">Comprobando servicio…</span>
-  </header>
-
-  <main class="app-shell">
-    <section class="panel conversation-panel" aria-labelledby="assistant-title">
-      <div class="panel-heading">
+  <div class="page-shell">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">↗</span>
         <div>
-          <p class="eyebrow">Asistente</p>
-          <h2 id="assistant-title">Describe lo que necesitas</h2>
+          <p class="brand-kicker">Asistente</p>
+          <h1>¿Qué necesitas hacer?</h1>
         </div>
-        <button id="location-button" class="secondary-button" type="button">Usar mi ubicación</button>
       </div>
 
-      <div id="messages" class="messages" aria-live="polite">
-        <article class="message assistant-message">
-          <p>Escribe una solicitud como “necesito retirar 200.000 pesos” y autoriza tu ubicación para buscar opciones cercanas.</p>
+      <div class="header-actions">
+        <span id="api-status" class="service-status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          Conectando
+        </span>
+        <button id="location-button" class="location-button" type="button">
+          <span class="location-icon" aria-hidden="true">⌖</span>
+          <span id="location-label">Activar ubicación</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="conversation-card" aria-labelledby="conversation-title">
+        <div class="section-title-row">
+          <div>
+            <p class="section-kicker">Consulta</p>
+            <h2 id="conversation-title">Cuéntame tu operación</h2>
+          </div>
+        </div>
+
+        <div class="quick-actions" aria-label="Operaciones frecuentes">
+          <button class="quick-action" type="button" data-query="Necesito retirar dinero">Retirar</button>
+          <button class="quick-action" type="button" data-query="Necesito depositar dinero">Depositar</button>
+          <button class="quick-action" type="button" data-query="Necesito hacer un pago">Pagar</button>
+          <button class="quick-action" type="button" data-query="Necesito hacer una transferencia">Transferir</button>
+        </div>
+
+        <div id="messages" class="messages" aria-live="polite" aria-label="Conversación">
+          <article class="message assistant-message">
+            <p>Indica la operación y el monto.</p>
+          </article>
+        </div>
+
+        <form id="chat-form" class="composer">
+          <label class="sr-only" for="chat-input">Escribe tu solicitud</label>
+          <div class="input-wrap">
+            <input
+              id="chat-input"
+              name="query"
+              type="text"
+              maxlength="500"
+              autocomplete="off"
+              inputmode="text"
+              placeholder="Ej. Retirar 200.000 pesos"
+              required
+            >
+            <button class="send-button" type="submit" aria-label="Enviar consulta">
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="result-card" aria-labelledby="result-title">
+        <div class="result-topbar">
+          <div>
+            <p class="section-kicker">Mejor opción</p>
+            <h2 id="result-title">Recomendación</h2>
+          </div>
+          <span id="result-state" class="result-state">Esperando consulta</span>
+        </div>
+
+        <div id="recommendation-empty" class="result-empty">
+          <div class="empty-icon" aria-hidden="true">⌖</div>
+          <p>Activa tu ubicación y escribe lo que necesitas.</p>
+        </div>
+
+        <article id="recommendation-card" class="recommendation hidden">
+          <div class="recommendation-heading">
+            <span id="recommendation-type" class="channel-badge"></span>
+            <span id="recommendation-distance" class="distance-badge"></span>
+          </div>
+
+          <h3 id="recommendation-name"></h3>
+          <p id="recommendation-address" class="address"></p>
+
+          <div class="route-summary">
+            <div>
+              <span>Tiempo</span>
+              <strong id="route-duration">—</strong>
+            </div>
+            <div>
+              <span>Recorrido</span>
+              <strong id="route-distance">—</strong>
+            </div>
+          </div>
+
+          <p id="recommendation-reason" class="recommendation-reason"></p>
+
+          <a id="open-route-link" class="route-button" href="#" target="_blank" rel="noopener noreferrer">
+            Cómo llegar
+            <span aria-hidden="true">↗</span>
+          </a>
         </article>
-      </div>
 
-      <form id="chat-form" class="chat-form">
-        <label class="sr-only" for="chat-input">Solicitud</label>
-        <input id="chat-input" name="query" type="text" maxlength="500" autocomplete="off" placeholder="Ejemplo: necesito retirar 200.000 pesos" required>
-        <button class="primary-button" type="submit">Buscar</button>
-      </form>
+        <div id="map" class="map" role="region" aria-label="Mapa de la ruta"></div>
+      </section>
+    </main>
 
-      <p class="privacy-note">No escribas números de cuenta, documentos, contraseñas ni datos personales.</p>
-    </section>
-
-    <section class="panel result-panel" aria-labelledby="result-title">
-      <div class="panel-heading">
+    <section id="alternatives-section" class="alternatives-section hidden" aria-labelledby="alternatives-title">
+      <div class="section-title-row">
         <div>
-          <p class="eyebrow">Resultado</p>
-          <h2 id="result-title">Recomendación</h2>
+          <p class="section-kicker">Otras opciones</p>
+          <h2 id="alternatives-title">También puedes ir a</h2>
         </div>
       </div>
-
-      <div id="recommendation-empty" class="empty-state">
-        <p>La recomendación aparecerá cuando tengamos una solicitud y tu ubicación.</p>
-      </div>
-
-      <article id="recommendation-card" class="recommendation-card hidden">
-        <div class="recommendation-header">
-          <span id="recommendation-type" class="channel-badge"></span>
-          <span id="recommendation-quality" class="quality-badge"></span>
-        </div>
-        <h3 id="recommendation-name"></h3>
-        <p id="recommendation-address" class="address"></p>
-        <dl class="metrics">
-          <div><dt>Distancia vial</dt><dd id="route-distance">—</dd></div>
-          <div><dt>Tiempo estimado</dt><dd id="route-duration">—</dd></div>
-        </dl>
-        <p id="recommendation-reason" class="reason"></p>
-        <a id="open-route-link" class="primary-link" href="#" target="_blank" rel="noopener noreferrer">Abrir indicaciones</a>
-      </article>
-
-      <div id="map" class="map" role="region" aria-label="Mapa de la recomendación"></div>
+      <div id="alternatives" class="alternatives-grid"></div>
     </section>
-  </main>
-
-  <section class="alternatives-section" aria-labelledby="alternatives-title">
-    <div class="section-heading">
-      <p class="eyebrow">Comparación</p>
-      <h2 id="alternatives-title">Alternativas cercanas</h2>
-    </div>
-    <div id="alternatives" class="alternatives-grid">
-      <p class="empty-alternatives">Todavía no hay alternativas para mostrar.</p>
-    </div>
-  </section>
-
-  <footer class="site-footer">
-    <p>Prototipo académico. Los puntos deben validarse antes de utilizarse en producción.</p>
-    <p>Mapa © colaboradores de OpenStreetMap.</p>
-  </footer>
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script type="module" src="./js/app.js"></script>
