@@ -4,20 +4,37 @@ let map;
 let userMarker;
 let pointMarker;
 let routeLayer;
+let resizeObserver;
 
 export function initializeMap() {
-  map = L.map("map", { zoomControl: true }).setView([4.5709, -74.2973], 5);
+  const container = document.querySelector("#map");
+
+  map = L.map(container, {
+    zoomControl: true,
+    preferCanvas: true,
+  }).setView([4.5709, -74.2973], 5);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap contributors",
   }).addTo(map);
 
-  window.setTimeout(() => map.invalidateSize(), 100);
+  const refreshSize = () => {
+    window.requestAnimationFrame(() => map.invalidateSize({ pan: false }));
+  };
+
+  resizeObserver = new ResizeObserver(refreshSize);
+  resizeObserver.observe(container);
+
+  window.addEventListener("load", refreshSize, { once: true });
+  window.addEventListener("resize", refreshSize);
+  window.setTimeout(refreshSize, 100);
+  window.setTimeout(refreshSize, 500);
 }
 
 export async function drawRoute(origin, destination) {
   clearMapLayers();
+  map.invalidateSize({ pan: false });
 
   userMarker = L.marker([origin.latitude, origin.longitude])
     .addTo(map)
@@ -39,8 +56,8 @@ export async function drawRoute(origin, destination) {
     if (!route) throw new Error("OSRM no devolvió una ruta.");
 
     routeLayer = L.geoJSON(route.geometry, { weight: 5 }).addTo(map);
+    map.invalidateSize({ pan: false });
     map.fitBounds(routeLayer.getBounds(), { padding: [32, 32] });
-    window.setTimeout(() => map.invalidateSize(), 50);
 
     return {
       distanceM: route.distance,
@@ -51,6 +68,7 @@ export async function drawRoute(origin, destination) {
       [origin.latitude, origin.longitude],
       [destination.latitude, destination.longitude],
     ]);
+    map.invalidateSize({ pan: false });
     map.fitBounds(bounds, { padding: [32, 32] });
     throw error;
   }
