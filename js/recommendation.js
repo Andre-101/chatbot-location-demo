@@ -9,25 +9,24 @@ export function getChannelForAction(action) {
   return CHANNEL_BY_ACTION[action] || "";
 }
 
-export function buildRecommendationReason(action, point) {
+export function buildRecommendationReason(action) {
   const labels = {
-    withdrawal: "retiro",
-    deposit: "depósito",
-    payment: "pago",
-    transfer: "transferencia",
+    withdrawal: "Retiro",
+    deposit: "Depósito",
+    payment: "Pago",
+    transfer: "Transferencia",
   };
 
-  const operation = labels[action] || "operación";
-  return `Es el punto compatible más cercano encontrado para tu ${operation}, según la distancia vial estimada.`;
+  return `${labels[action] || "Operación"} disponible en este punto.`;
 }
 
 export function validateParsedIntent(parsed) {
   if (!parsed || parsed.action === "unknown") {
-    return "No pude identificar la operación. Indica si necesitas retirar, depositar, pagar o transferir.";
+    return "Indica si quieres retirar, depositar, pagar o transferir.";
   }
 
   if (parsed.needs_clarification) {
-    return "Necesito un poco más de información para interpretar la solicitud.";
+    return "Indica la operación y el monto.";
   }
 
   return "";
