@@ -1,6 +1,6 @@
 # Chatbot Location Demo
 
-Prototipo web estático para interpretar una operación, obtener la ubicación del navegador, consultar puntos cercanos desde Google Apps Script y mostrar una ruta estimada con OSRM.
+Aplicación web para interpretar una operación, usar la ubicación del dispositivo, consultar puntos cercanos y mostrar una ruta.
 
 ## Arquitectura
 
@@ -8,18 +8,20 @@ Prototipo web estático para interpretar una operación, obtener la ubicación d
 GitHub Pages
   ├─ GET → Google Apps Script
   │          ├─ Google Sheets
-  │          └─ Groq (POST interno)
+  │          └─ Groq
   └─ GET → OSRM
 ```
 
-La clave de Groq permanece únicamente en las propiedades del proyecto de Apps Script. Este repositorio no contiene secretos ni la base privada.
+La clave de Groq permanece únicamente en las propiedades de Apps Script. El repositorio no contiene secretos ni la base privada.
 
 ## Estructura
 
 ```text
 .
 ├─ index.html
-├─ css/styles.css
+├─ css/
+│  ├─ styles.css
+│  └─ map-markers.css
 ├─ js/
 │  ├─ app.js
 │  ├─ api.js
@@ -30,23 +32,15 @@ La clave de Groq permanece únicamente en las propiedades del proyecto de Apps S
 └─ .gitignore
 ```
 
-## Configuración pública
-
-La URL pública de Apps Script y el endpoint de OSRM están en `js/config.js`.
-
 ## Ejecución local
-
-Los módulos ES no deben abrirse directamente con `file://`. Inicia un servidor local, por ejemplo:
 
 ```bash
 python -m http.server 8000
 ```
 
-Luego abre `http://localhost:8000`.
+Abre `http://localhost:8000`.
 
 ## GitHub Pages
-
-Configura:
 
 ```text
 Settings → Pages
@@ -55,15 +49,10 @@ Branch: main
 Folder: / (root)
 ```
 
-## Estado del MVP
+## Funciones
 
-- Consulta de salud de Apps Script.
-- Permiso de geolocalización del navegador.
 - Interpretación de retiro, depósito, pago y transferencia.
-- Búsqueda de candidatos cercanos.
-- Comparación básica mediante OSRM.
-- Mapa Leaflet, recomendación y alternativas.
-
-## Limitaciones
-
-Es una demostración. La actividad, capacidad transaccional, horarios y vigencia de cada punto deben verificarse antes de una operación real. No introduzcas datos personales, credenciales o información financiera sensible.
+- GPS en dispositivos móviles.
+- Búsqueda de puntos cercanos.
+- Comparación de recorridos con OSRM.
+- Mapa, recomendación y alternativas.
